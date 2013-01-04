@@ -46,6 +46,16 @@ multiboot_entry:
         /* Push the magic value.  */
         pushl   %eax
 
+        /* Set up IDT */
+        movl    $vector0, %eax
+        andl    $0xffff, %eax
+        orl     $0x00080000, %eax
+        movl    %eax, idt_base
+        movl    $vector0, %eax
+        andl    $0xffff0000, %eax
+        orl     $0x8e00, %eax
+        movl    %eax, idt_base + 4
+
         /* Enable PAE */
         movl    %cr4, %eax
         btsl    $5, %eax
@@ -87,6 +97,7 @@ multiboot_entry:
 
         /* Load gdt */
         lgdt    gdt
+        lidt    idt
 
         /* Load Level 4 page table (page 128) */
         leal    pgtable, %eax
@@ -115,9 +126,16 @@ multiboot_entry:
 startup_64:
 _startup_64:
 loop4:
+        //jmp   loop4
+        xorq    %rcx, %rcx
+        divq    %rcx, %rax
         // Dummy code that just twirls the first char on the screen
         addq    $0x1,0xb8000
         jmp     loop4
+
+vector0:
+        movq    $1, %rcx
+        iretq
 
         /* Our stack area.  */
         .comm   stack, STACK_SIZE
