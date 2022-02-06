@@ -56,6 +56,35 @@ multiboot_entry:
         orl     $0x8e00, %eax
         movl    %eax, idt_base + 4
 
+	/* Initialize PIC */
+	mov	$0x11, %al
+	out	%al, $0x20
+	out	%al, $0xa0
+	mov	$0x00, %al
+	out	%al, $0x21
+	mov	$0x28, %al
+	out	%al, $0xa1
+	mov	$0x4, %al
+	out	%al, $0x21
+	mov	$0x2, %al
+	out	%al, $0xa1
+	mov	$1, %al
+	out	%al, $0x21
+	mov	$1, %al
+	out	%al, $0xa1
+
+	/* Enable IRQ0 line */
+	in	$0x21, %al
+	and	$0xfe, %al
+	out	%al, $0x21
+
+	/* Set up 8253 channel 0 mode 2, counter 0xffff */
+	mov	$0x34, %al
+	out	%al, $0x43
+	mov	$0xff, %al
+	out	%al, $0x40
+	out	%al, $0x40
+
         /* Enable PAE */
         movl    %cr4, %eax
         btsl    $5, %eax
@@ -125,16 +154,18 @@ multiboot_entry:
         .code64
 startup_64:
 _startup_64:
+	mov	$0xb8000, %rcx
+	sti
 loop4:
-        //jmp   loop4
-        xorq    %rcx, %rcx
-        divq    %rcx, %rax
-        // Dummy code that just twirls the first char on the screen
-        addq    $0x1,0xb8000
+        // Dummy code that just twirls a char on the screen
+        addq    $0x1, (%rcx)
         jmp     loop4
 
 vector0:
-        movq    $1, %rcx
+        add    $4, %rcx
+	/* Issue non-specific EOI to the PIC */
+	mov	$0x20, %al
+	out	%al, $0x20
         iretq
 
         /* Our stack area.  */
